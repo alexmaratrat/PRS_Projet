@@ -1,0 +1,24 @@
+Bonjour test
+Contrôle de flux
+
+Chaque partenaire dans une connexion TCP dispose d'un tampon de réception dont la taille n'est pas illimitée. Afin d'éviter qu'un hôte ne surcharge l'autre, TCP prévoit plusieurs mécanismes de contrôle de flux. Ainsi, chaque segment TCP contient la taille disponible dans le tampon de réception de l'hôte qui l'a envoyé. En réponse, l'hôte distant va limiter la taille de la fenêtre d'envoi afin de ne pas le surcharger.
+
+D'autres algorithmes comme Nagle ou Clarck facilitent également le contrôle du flux.
+Contrôle de congestion
+
+La congestion intervient lorsque trop de sources tentent d'envoyer trop de données trop vite pour que le réseau soit capable de les transmettre. Ceci entraîne la perte de nombreux paquets et de longs délais.
+
+Les acquittements des données émises, ou l'absence d'acquittements, sont utilisés par les émetteurs pour interpréter de façon implicite l'état du réseau entre les systèmes finaux. À l'aide de temporisations, les émetteurs et destinataires TCP peuvent modifier le comportement du flux de données. C'est ce qu'on appelle généralement le contrôle de congestion.
+
+Il existe une multitude d'algorithmes d'évitement de congestion pour TCP.
+Autres
+
+TCP utilise un certain nombre de mécanismes afin d'obtenir une bonne robustesse et des performances élevées. Ces mécanismes comprennent l'utilisation d'une fenêtre glissante, l'algorithme de démarrage lent (slow start), l'algorithme d'évitement de congestion (congestion avoidance), les algorithmes de retransmission rapide (fast retransmit) et de récupération rapide (fast recovery), etc. Des recherches sont menées actuellement afin d'améliorer TCP pour traiter efficacement les pertes, minimiser les erreurs, gérer la congestion et être rapide dans des environnements très haut débit.
+Slow Start (démarrage lent)
+
+Le démarrage lent TCP (Slow start) est un algorithme qui équilibre la vitesse d'une connexion réseau. Le démarrage lent augmente progressivement la quantité de données transmises jusqu'à ce qu'il trouve la capacité de transport maximale du réseau.
+
+Le démarrage lent du TCP est l'une des premières étapes du processus de contrôle de la congestion. Il permet d'équilibrer la quantité de données qu'un émetteur peut transmettre (appelée fenêtre de congestion) et la quantité de données que le récepteur peut accepter (appelée fenêtre de réception). La plus faible des deux valeurs devient la quantité maximale de données que l'expéditeur est autorisé à transmettre avant de recevoir un accusé de réception du récepteur. 
+
+
+Fin test
