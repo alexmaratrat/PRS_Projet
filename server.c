@@ -1,4 +1,4 @@
-  #include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -36,10 +36,17 @@ int main (int argc, char *argv[]) {
 	struct hostent *host_entry;
 	int host_name;
 	host_name = gethostname(host, sizeof(host)); //find the host name
-	if(host_name == -1){perror("gethostname");exit(1);}
+	if(host_name == -1)
+  {
+    perror("gethostname");
+    exit(1);
+  }
 	//check_host_name(hostname);
 	host_entry = gethostbyname(host); //find host information
-	if(host_entry == NULL){perror("gethostbyname");exit(1);}
+	if(host_entry == NULL){
+    perror("gethostbyname");
+    exit(1);
+  }
 	//check_host_entry(host_entry);
 	IP = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0])); //Convert into IP string
 	printf("Current Host Name: %s\n", host);
@@ -48,11 +55,10 @@ int main (int argc, char *argv[]) {
 
 
   // printf("%s\n", argv[0]);
-  struct sockaddr_in adresse, adresse2,client1,adresse3;
+  struct sockaddr_in adresse2,adresse3;
   int port= 8080;
   int port_data = MIN_PORT;
   int valid= 1;
-  socklen_t alen1= sizeof(adresse);
   socklen_t alen2= sizeof(adresse2);
   socklen_t alen3= sizeof(adresse3);
   char buffer[RCVSIZE];
@@ -66,14 +72,8 @@ int main (int argc, char *argv[]) {
   int server_desc = socket(AF_INET, SOCK_STREAM, 0);
   int server_desc2 = socket(AF_INET, SOCK_DGRAM, 0);
   int server_data = socket(AF_INET,SOCK_DGRAM,0);
-  int client_desc1;
-
 
   //handle error
-  if (server_desc < 0) {
-    perror("Cannot create socket 1\n");
-    return -1;
-  }
   if (server_desc2< 0) {
     perror("Cannot create socket 2\n");
     return -1;
@@ -83,15 +83,11 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
-  setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
+  // setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
   setsockopt(server_desc2, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
   setsockopt(server_data, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
 
 
-
-  adresse.sin_family= AF_INET;
-  adresse.sin_port= htons(port);
-  adresse.sin_addr.s_addr= htonl(INADDR_ANY);
 
   adresse2.sin_family= AF_INET;
   adresse2.sin_port= htons(5050);
@@ -101,12 +97,7 @@ int main (int argc, char *argv[]) {
   adresse3.sin_addr.s_addr= htonl(INADDR_ANY);
 
 
-  //initialize socket
-  if (bind(server_desc, (struct sockaddr*) &adresse, sizeof(adresse)) == -1) {
-    perror("Bind failed for sckt 1\n");
-    close(server_desc);
-    return -1;
-  }
+  // Binding socket
 
   if (bind(server_desc2, (struct sockaddr*) &adresse2, sizeof(adresse2)) == -1) {
     perror("Bind failed for sckt 2\n");
@@ -126,12 +117,11 @@ int main (int argc, char *argv[]) {
 
   fd_set fds;
   int activity;
+  // int accept_done = 0;
 
-  int accept_done = 0;
   while (1) {
     printf("Hey\n");
     FD_ZERO(&fds);
-    FD_SET(server_desc,&fds);
     FD_SET(server_desc2,&fds);
     FD_SET(server_data,&fds);
     activity = select(server_data+1,&fds,NULL,NULL,NULL);
@@ -140,45 +130,13 @@ int main (int argc, char *argv[]) {
       printf("select error \n");
     }
 
-    if (FD_ISSET(server_desc,&fds)) {
-      if ((client_desc1 = accept(server_desc, (struct sockaddr*)&client1, &alen1))<0) {
-        printf("Pbm connect client1\n");
-      }else{
-        int msgSize = read(client_desc1,buffer,RCVSIZE);
-        printf("Connected ");
-
-        while (msgSize > 0) {
-          // printf("%i\n",msgSize);
-          write(client_desc1,buffer,msgSize);
-          printf("%s\n",buffer );
-          printf("%i",strcmp(buffer,"stop"));
-
-          if (strcmp(buffer,"stop")==0) {
-            close(client_desc1);
-            memset(buffer,0,RCVSIZE);
-            printf("%s",buffer);
-            close(client_desc1);
-            // if (p==0) {
-            //   printf("This process (pid :%i )\n",getpid());
-            //   exit(0);
-            // }
-
-          }else{
-            memset(buffer,0,RCVSIZE);
-            msgSize = read(client_desc1,buffer,RCVSIZE);
-          }
-      }
-    }
-  }
+    // Monitoring control scket
     if (FD_ISSET(server_desc2,&fds)) {
       int n;
       if ((n =recvfrom(server_desc2,buffer,sizeof buffer -1,0,(struct sockaddr*) &adresse2,&alen2))<0) {
         printf("Error rcvfrom\n");
       }else{
-        // buffer[n] = "";
         printf("received in ctrl scket : %s\n",buffer);
-        // printf("%i\n", strlen(buffer));
-        // printf("%i\n", strcmp(buffer,"stop\0\0"));
         if (strncmp(buffer,"SYN",3)==0) {
           printf("SYN received\n");
           memset(buffer,0,sizeof(buffer));
@@ -204,13 +162,13 @@ int main (int argc, char *argv[]) {
           strcpy(s,s_port_data);
           // strcat()
           printf("Data port is %i\n",port_data);
-          bzero(buffer, RCVSIZE);
+          memset(buffer,0, sizeof(buffer));
           // char *buffer = malloc(80);
           // char *ack = malloc(40);
           // strcpy(ack,"SYN-ACK");
           strcat(buffer,"SYN-ACK");
           strcat(buffer,s_port_data);
-          printf("buffer akhi IS : %s\n",buffer);
+          printf("Control Socket : Sending SYN-ACK : %s\n",buffer);
 
 
           clock_gettime(CLOCK_MONOTONIC, &start_time);
@@ -237,14 +195,14 @@ int main (int argc, char *argv[]) {
 
     if (FD_ISSET(server_data,&fds)) {
       // printf("Data socket\n");
-      bzero(buffer_data,RCVSIZE);
+      memset(buffer_data,0, sizeof(buffer_data));
       if ((recvfrom(server_data,buffer_data,sizeof buffer_data -1,0,(struct sockaddr*) &adresse3,&alen3))<0) {
         printf("Error rcvfrom\n");
       }
-      printf("received in data socket: %s \n",buffer_data);
+      printf("Received in data socket: %s \n",buffer_data);
       if (strncmp(buffer_data,"ACK",3)==0) {
         clock_gettime(CLOCK_MONOTONIC, &end_time);
-        printf("ACK received\n");
+        printf("Data socket : ACK received \n");
         rtt = (end_time.tv_sec - start_time.tv_sec) * (1E9);
         rtt = (rtt + (end_time.tv_nsec - start_time.tv_nsec)) * (1E-9);
 
@@ -255,8 +213,8 @@ int main (int argc, char *argv[]) {
         //   printf("Error %i sendto\n");
         // }
       }
-
       int n;
+      int c;
       FILE *fp;
       char filename[20];
       strcpy(filename,buffer_data);
@@ -265,7 +223,12 @@ int main (int argc, char *argv[]) {
       fsize = ftell(fp);
       fseek(fp,0,SEEK_SET);
       max_seq = fsize/(RCVSIZE-6)+1;
-      int seq = 22;
+      int seq = 0;
+      char sq[6];
+      sprintf(sq,"%i",seq);
+      // strcpy(sq,);
+      printf("sizeof qs : %li\n",sizeof(sq));
+      printf("fsize is : %i\n",fsize);
       printf("File divided in %i sequences\n", max_seq);
       if(fp==NULL)
       {
@@ -273,16 +236,32 @@ int main (int argc, char *argv[]) {
           exit(1);
       }
       char buffer_file[T_SIZE-6];
-      while(fgets(buffer_file,T_SIZE-6,fp)!=NULL)
+      char c_temp[1];
+      for(int i=0;i<max_seq;i++)
       {
-        bzero(buffer_data,RCVSIZE);
-        sprintf(buffer_data,"%d",seq);
-        strcat(buffer_data,buffer_file);
-        printf("buffer_data : %s\n", buffer_data);
+        printf("fp is located at char : %li \n",ftell(fp));
+        sprintf(sq,"%i",seq);
+        printf("Debug\n");
+        strcat(buffer_data,sq);
+        printf("Debug\n");
+        for (int k = 0; k < T_SIZE-6; k++) {
+          c=fgetc(fp);
+          printf("Debug\n");
+          printf("size c : %li and size c_temp : %li\n",sizeof(c),sizeof(c_temp));
+          sprintf(c_temp,"%i",c);
+          printf("Debug\n");
+          strcat(buffer_data,c_temp);
+          printf("Debug\n");
+        }
+        printf("buffer_data size is %li: %s\n", sizeof(buffer_data),buffer_data);
         n = sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3));
-        printf("n value : %i\n", n);
-
+        memset(buffer_data,0, sizeof(buffer_data));
+        memset(buffer_file,0, sizeof(buffer_file));
       }
+
+        // printf("n value : %i\n", n);
+
+
       // End of transmission
       bzero(buffer_data,RCVSIZE);
       strcpy(buffer_data,"FIN");
