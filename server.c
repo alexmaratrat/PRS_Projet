@@ -69,7 +69,6 @@ int main (int argc, char *argv[]) {
   struct timespec start_time, end_time;
 
   //create socket
-  int server_desc = socket(AF_INET, SOCK_STREAM, 0);
   int server_desc2 = socket(AF_INET, SOCK_DGRAM, 0);
   int server_data = socket(AF_INET,SOCK_DGRAM,0);
 
@@ -83,7 +82,6 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
-  // setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
   setsockopt(server_desc2, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
   setsockopt(server_data, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
 
@@ -102,14 +100,6 @@ int main (int argc, char *argv[]) {
   if (bind(server_desc2, (struct sockaddr*) &adresse2, sizeof(adresse2)) == -1) {
     perror("Bind failed for sckt 2\n");
     close(server_desc2);
-    return -1;
-  }
-
-
-
-  //listen to incoming clients
-  if (listen(server_desc, 0) < 0) {
-    printf("Listen failed 1\n");
     return -1;
   }
 
@@ -139,7 +129,7 @@ int main (int argc, char *argv[]) {
         printf("received in ctrl scket : %s\n",buffer);
         if (strncmp(buffer,"SYN",3)==0) {
           printf("SYN received\n");
-          memset(buffer,0,sizeof(buffer));
+          memset(buffer,'\0',sizeof(buffer));
           adresse3.sin_port = htons(MIN_PORT);
 
           while (bind(server_data, (struct sockaddr*) &adresse3, sizeof(adresse3)) <0 && port <= MAX_PORT) {
@@ -156,13 +146,13 @@ int main (int argc, char *argv[]) {
             return -1;
           }
 
-          char *s = malloc(40);
+          // char *s = malloc(40);
           char s_port_data[10];
-          sprintf(s_port_data,"%d",port_data);
-          strcpy(s,s_port_data);
+          sprintf(s_port_data,"%i",port_data);
+          // strcpy(s,s_port_data);
           // strcat()
           printf("Data port is %i\n",port_data);
-          memset(buffer,0, sizeof(buffer));
+          memset(buffer,'\0', sizeof(buffer));
           // char *buffer = malloc(80);
           // char *ack = malloc(40);
           // strcpy(ack,"SYN-ACK");
@@ -195,7 +185,7 @@ int main (int argc, char *argv[]) {
 
     if (FD_ISSET(server_data,&fds)) {
       // printf("Data socket\n");
-      memset(buffer_data,0, sizeof(buffer_data));
+      memset(buffer_data,'\0', sizeof(buffer_data));
       if ((recvfrom(server_data,buffer_data,sizeof buffer_data -1,0,(struct sockaddr*) &adresse3,&alen3))<0) {
         printf("Error rcvfrom\n");
       }
@@ -236,27 +226,39 @@ int main (int argc, char *argv[]) {
           exit(1);
       }
       char buffer_file[T_SIZE-6];
-      char c_temp[1];
+      char *c_temp = malloc(sizeof(char));
+      int eof=0;
+      memset(buffer_data,'\0', sizeof(buffer_data));
+
       for(int i=0;i<max_seq;i++)
       {
-        printf("fp is located at char : %li \n",ftell(fp));
-        sprintf(sq,"%i",seq);
-        printf("Debug\n");
+        // printf("fp is located at char : %li \n",ftell(fp));
+        sprintf(sq,"%06i",seq);
+        // printf("Debug\n");
         strcat(buffer_data,sq);
-        printf("Debug\n");
-        for (int k = 0; k < T_SIZE-6; k++) {
-          c=fgetc(fp);
-          printf("Debug\n");
-          printf("size c : %li and size c_temp : %li\n",sizeof(c),sizeof(c_temp));
-          sprintf(c_temp,"%i",c);
-          printf("Debug\n");
+        printf("Debug buffer data size is %li and it is :  %s\n",sizeof(buffer_data),buffer_data);
+        for (int k = 0; k < T_SIZE-6; k++)
+        {
+          if (feof(fp)) // EOF
+          {
+            break;
+          }
+          *c_temp=fgetc(fp);
+          // printf("Debug %i\n",k);
+          // printf("size c : %li and size c_temp : %li\n",sizeof(c),sizeof(c_temp));
+          // sprintf(c_temp,"%i",c);
+          // memset(&c,0,sizeof(int));
+          // printf("Debug\n");
           strcat(buffer_data,c_temp);
-          printf("Debug\n");
+          // printf("Debug buffer_data : %s\n", buffer_data);
+          memset(c_temp,'\0',sizeof(c_temp));
         }
-        printf("buffer_data size is %li: %s\n", sizeof(buffer_data),buffer_data);
+        printf("buffer_data size is %li and it is : %s\n", sizeof(buffer_data),buffer_data);
         n = sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3));
-        memset(buffer_data,0, sizeof(buffer_data));
-        memset(buffer_file,0, sizeof(buffer_file));
+        memset(buffer_data,'\0', sizeof(buffer_data));
+        memset(buffer_file,'\0', sizeof(buffer_file));
+        // printf("Debug buffer data size is %li and it is :  %s\n",sizeof(buffer_data),buffer_data);
+        seq++;
       }
 
         // printf("n value : %i\n", n);
@@ -283,6 +285,7 @@ int main (int argc, char *argv[]) {
   }
 
 
-close(server_desc);
+close(server_desc2);
+close(server_data);
 return 0;
 }
