@@ -108,6 +108,14 @@ int main (int argc, char *argv[]) {
   fd_set fds;
   int activity;
   // int accept_done = 0;
+  int *ack = NULL;
+  char **segments= NULL;
+  FILE *fp;
+  char filename[20];
+  char buffer_file[T_SIZE-6];
+  char *c_temp = malloc(sizeof(char));
+  int file_sent = 0;
+  int cwnd=1;
 
   while (1) {
     printf("Hey\n");
@@ -132,7 +140,8 @@ int main (int argc, char *argv[]) {
           memset(buffer,'\0',sizeof(buffer));
           adresse3.sin_port = htons(MIN_PORT);
 
-          while (bind(server_data, (struct sockaddr*) &adresse3, sizeof(adresse3)) <0 && port <= MAX_PORT) {
+          while (bind(server_data, (struct sockaddr*) &adresse3, sizeof(adresse3)) <0 && port <= MAX_PORT)
+          {
             port_data++;
             adresse3.sin_port = htons(port_data);
           }
@@ -141,40 +150,33 @@ int main (int argc, char *argv[]) {
           //   close(server_data);
           //   return -1;
           // }
-          if (getsockname(server_data, (struct sockaddr *)&adresse3, &alen3) == -1) {
+          if (getsockname(server_data, (struct sockaddr *)&adresse3, &alen3) == -1)
+          {
             perror("getsockname");
             return -1;
           }
-
-          // char *s = malloc(40);
           char s_port_data[10];
           sprintf(s_port_data,"%i",port_data);
-          // strcpy(s,s_port_data);
-          // strcat()
           printf("Data port is %i\n",port_data);
           memset(buffer,'\0', sizeof(buffer));
-          // char *buffer = malloc(80);
-          // char *ack = malloc(40);
-          // strcpy(ack,"SYN-ACK");
           strcat(buffer,"SYN-ACK");
           strcat(buffer,s_port_data);
+          buffer[11]='\0';
           printf("Control Socket : Sending SYN-ACK : %s\n",buffer);
-
-
           clock_gettime(CLOCK_MONOTONIC, &start_time);
-          if ((n = sendto(server_desc2,buffer,strlen(buffer),0,(struct sockaddr*) &adresse2,sizeof(adresse2)))<0) {
+          if ((n = sendto(server_desc2,buffer,strlen(buffer),0,(struct sockaddr*) &adresse2,sizeof(adresse2)))<0)
+          {
             printf("Error %i sendto\n",n);
           }
         }
-        if (strncmp(buffer,"ACK",3)==0) {
+        if (strncmp(buffer,"ACK",3)==0)
+        {
+          clock_gettime(CLOCK_MONOTONIC, &end_time);
           printf("ACK received : %s\n",buffer);
+          rtt = (end_time.tv_sec - start_time.tv_sec) * (1E9);
+          rtt = (rtt + (end_time.tv_nsec - start_time.tv_nsec)) * (1E-9);
 
-
-        }
-        if (strncmp(buffer,"stop",4)==0) {
-          printf("Going to stop \n" );
-          close(server_desc2);
-          exit(0);
+          printf("RTT: %f sec = %f usec\n", rtt, rtt * 1E9);
         }
 
 
@@ -183,108 +185,119 @@ int main (int argc, char *argv[]) {
 
     }
 
-    if (FD_ISSET(server_data,&fds)) {
-      // printf("Data socket\n");
+    if (FD_ISSET(server_data,&fds))
+    {
       memset(buffer_data,'\0', sizeof(buffer_data));
       if ((recvfrom(server_data,buffer_data,sizeof buffer_data -1,0,(struct sockaddr*) &adresse3,&alen3))<0) {
         printf("Error rcvfrom\n");
       }
-      printf("Received in data socket: %s \n",buffer_data);
-      if (strncmp(buffer_data,"ACK",3)==0) {
-        clock_gettime(CLOCK_MONOTONIC, &end_time);
+      printf("Received name file : %s \n",buffer_data);
+      if (strncmp(buffer_data,"ACK",3)==0)
+      {
         printf("Data socket : ACK received \n");
-        rtt = (end_time.tv_sec - start_time.tv_sec) * (1E9);
-        rtt = (rtt + (end_time.tv_nsec - start_time.tv_nsec)) * (1E-9);
-
-        printf("RTT: %f sec = %f usec\n", rtt, rtt * 1E9);
-
-        // strcpy(buffer_data,"ACK");
-        // if ((sendto(server_data,buffer_data,strlen(buffer_data),0,(struct sockaddr*) &adresse3,sizeof(adresse3)))<0) {
-        //   printf("Error %i sendto\n");
-        // }
+        int num_ack = atoi(buffer_data);
+        printf("num ack is : %i\n", num_ack);
       }
-      int n;
-      int c;
-      FILE *fp;
-      char filename[20];
-      strcpy(filename,buffer_data);
-      fp = fopen(filename, "r");
-      fseek(fp,0,SEEK_END); // pointing to the end of file
-      fsize = ftell(fp);
-      fseek(fp,0,SEEK_SET);
-      max_seq = fsize/(RCVSIZE-6)+1;
-      int seq = 0;
-      char sq[6];
-      sprintf(sq,"%i",seq);
-      // strcpy(sq,);
-      printf("sizeof qs : %li\n",sizeof(sq));
-      printf("fsize is : %i\n",fsize);
-      printf("File divided in %i sequences\n", max_seq);
-      if(fp==NULL)
-      {
-          perror("[-]Error in reading file.");
-          exit(1);
-      }
-      char buffer_file[T_SIZE-6];
-      char *c_temp = malloc(sizeof(char));
-      int eof=0;
-      memset(buffer_data,'\0', sizeof(buffer_data));
 
-      for(int i=0;i<max_seq;i++)
+      if(file_sent==0)
       {
-        // printf("fp is located at char : %li \n",ftell(fp));
-        sprintf(sq,"%06i",seq);
-        // printf("Debug\n");
-        strcat(buffer_data,sq);
-        printf("Debug buffer data size is %li and it is :  %s\n",sizeof(buffer_data),buffer_data);
-        for (int k = 0; k < T_SIZE-6; k++)
+
+        strcpy(filename,buffer_data);
+        fp = fopen(filename, "r");
+        fseek(fp,0,SEEK_END); // pointing to the end of file
+        fsize = ftell(fp);
+        fseek(fp,0,SEEK_SET);
+        max_seq = fsize/(RCVSIZE-6)+1;
+        ack = (int*) calloc(max_seq,sizeof(int));
+        printf("Tableau de ack \n");
+        for(int i =0;i<max_seq;i++)
         {
-          if (feof(fp)) // EOF
+          printf(" %i ",ack[i]);
+        }
+
+        // int seq = 0;
+        char sq[12];
+        // sprintf(sq,"%i",seq);
+        // strcpy(sq,);
+        // printf("sizeof qs : %li\n",sizeof(sq));
+        // printf("fsize is : %i\n",fsize);
+        printf("File divided in %i sequences\n", max_seq);
+        if(fp==NULL)
+        {
+            perror("[-]Error in reading file.");
+            exit(1);
+        }
+
+        memset(buffer_data,'\0', sizeof(buffer_data));
+
+        // Extraction from file to 2D list of char[T_SIZE] with a length of max_seq
+         segments= malloc(max_seq*sizeof(char*));
+
+        for(int i=0;i<max_seq;i++)
+        {
+          segments[i]=malloc(T_SIZE*sizeof(char));
+          // printf("fp is located at char : %li \n",ftell(fp));
+          sprintf(sq,"%06i",i);
+          // printf("Debug\n");
+          strcat(segments[i],sq);
+          for (int k = 0; k < T_SIZE-6; k++)
           {
+            if (feof(fp)) // EOF
+            {
+              break;
+            }
+            *c_temp=fgetc(fp);
+            strcat(segments[i],c_temp);
+            memset(c_temp,'\0',sizeof(c_temp));
+          }
+          printf("Segment number %i is :  %s\n\n\n",i,segments[i]);
+        }
+
+        // Transmission
+
+        for(int i=0;i<i+cwnd+1;i++){
+          if (strncmp(segments[i],max_seq,1)==0) {
             break;
           }
-          *c_temp=fgetc(fp);
-          // printf("Debug %i\n",k);
-          // printf("size c : %li and size c_temp : %li\n",sizeof(c),sizeof(c_temp));
-          // sprintf(c_temp,"%i",c);
-          // memset(&c,0,sizeof(int));
-          // printf("Debug\n");
-          strcat(buffer_data,c_temp);
-          // printf("Debug buffer_data : %s\n", buffer_data);
-          memset(c_temp,'\0',sizeof(c_temp));
+          // Lance un timer = RTT pour checker si ack du segment est reçu, si timeout, renvoi
+          if(sendto(server_data, segments[i], T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3))==-1)
+          {
+            printf("Send failed for : %s \n\n",segments[i]);
+          }
         }
-        printf("buffer_data size is %li and it is : %s\n", sizeof(buffer_data),buffer_data);
-        n = sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3));
+
+        // printf("buffer_data size is %li and it is : %s, sizeof(buffer_data),buffer_data);
+        if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3))==-1)
+        {
+          printf("Send failed\n");
+        }
         memset(buffer_data,'\0', sizeof(buffer_data));
         memset(buffer_file,'\0', sizeof(buffer_file));
-        // printf("Debug buffer data size is %li and it is :  %s\n",sizeof(buffer_data),buffer_data);
-        seq++;
+        file_sent = 1;
       }
+
 
         // printf("n value : %i\n", n);
 
 
       // End of transmission
-      bzero(buffer_data,RCVSIZE);
+      memset(buffer_data,'\0', sizeof(buffer_data));
       strcpy(buffer_data,"FIN");
-      n = sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3));
+      if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3))==-1)
+      {
+        printf("Send failed\n");
+      }
       // Closing file then sockets
       printf("Closing file \n");
       fclose(fp);
-      // printf("%s\n",buffer_data);
-
-
     }
-
-    // if(p==0){
-    //   printf("In child process connected\n");
-    // } else {
-    //   printf("In parent process connected\n");
-    // }
-    // // printf("Value of accept is:%d\n", client_desc);
   }
-
-
+  for(int i=0;i<max_seq;i++)
+  {
+    free(segments[i]);
+    free(ack);
+  }
+free(c_temp);
 close(server_desc2);
 close(server_data);
 return 0;
