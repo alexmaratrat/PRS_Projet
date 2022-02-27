@@ -11,7 +11,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <time.h>
-
+#include <math.h>
 
 #define RCVSIZE 1024
 #define T_SIZE 1024
@@ -114,9 +114,10 @@ int main (int argc, char *argv[]) {
   char filename[20];
   char buffer_file[T_SIZE-6];
   char *c_temp = malloc(sizeof(char));
+  struct timeval timeout;
   int file_sent = 0;
   int cwnd=1;
-
+  int stop = 0;
   while (1) {
     printf("Hey\n");
     FD_ZERO(&fds);
@@ -168,16 +169,27 @@ int main (int argc, char *argv[]) {
           {
             printf("Error %i sendto\n",n);
           }
+          memset(buffer,'\0', sizeof(buffer));
+          printf("Waiting for ACK...\n");
+
+
         }
         if (strncmp(buffer,"ACK",3)==0)
         {
+          printf("Yo \n");
           clock_gettime(CLOCK_MONOTONIC, &end_time);
           printf("ACK received : %s\n",buffer);
           rtt = (end_time.tv_sec - start_time.tv_sec) * (1E9);
+          printf("RTT 1 %f\n",rtt );
           rtt = (rtt + (end_time.tv_nsec - start_time.tv_nsec)) * (1E-9);
 
           printf("RTT: %f sec = %f usec\n", rtt, rtt * 1E9);
-        }
+          timeout.tv_sec = end_time.tv_sec - start_time.tv_sec;
+          timeout.tv_usec = (long int) (0.001*(end_time.tv_nsec - start_time.tv_nsec));
+
+
+
+
 
 
     }
@@ -192,15 +204,16 @@ int main (int argc, char *argv[]) {
         printf("Error rcvfrom\n");
       }
       printf("Received name file : %s \n",buffer_data);
-      if (strncmp(buffer_data,"ACK",3)==0)
-      {
-        printf("Data socket : ACK received \n");
-        int num_ack = atoi(buffer_data);
-        printf("num ack is : %i\n", num_ack);
-      }
+      // timeout.tv_usec = (int) (rtt*pow(10,6));
+      // printf("Timeout : %ld\n",timeout.tv_usec);
 
-      if(file_sent==0)
-      {
+      if (setsockopt (server_data, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof(timeout)) < 0)
+              printf("setsockopt failed\n");
+      if (setsockopt (server_data, SOL_SOCKET, SO_SNDTIMEO, &timeout,sizeof(timeout)) < 0)
+              printf("setsockopt failed\n");
+      FD_SET(server_data,&fds);
+      activity = select(server_data+1,&fds,NULL,NULL,NULL);
+
 
         strcpy(filename,buffer_data);
         fp = fopen(filename, "r");
@@ -254,12 +267,16 @@ int main (int argc, char *argv[]) {
         }
 
         // Transmission
-
-        for(int i=0;i<i+cwnd+1;i++){
-          if (strncmp(segments[i],max_seq,1)==0) {
+        int k =0;
+        for(int i=k;i<k+cwnd+1;i++){
+          if (strncmp(segments[i],max_seq,1)==0)
             break;
-          }
+          if (ack[k]==1) // décalage de fenêtre vers la droite
+            k++;
+
           // Lance un timer = RTT pour checker si ack du segment est reçu, si timeout, renvoi
+          // clock_gettime(CLOCK_MONOTONIC, &timer_s);
+          // int timeout=
           if(sendto(server_data, segments[i], T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3))==-1)
           {
             printf("Send failed for : %s \n\n",segments[i]);
@@ -277,26 +294,31 @@ int main (int argc, char *argv[]) {
       }
 
 
+
         // printf("n value : %i\n", n);
 
 
       // End of transmission
-      memset(buffer_data,'\0', sizeof(buffer_data));
-      strcpy(buffer_data,"FIN");
-      if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3))==-1)
-      {
-        printf("Send failed\n");
-      }
-      // Closing file then sockets
-      printf("Closing file \n");
-      fclose(fp);
+      // memset(buffer_data,'\0', sizeof(buffer_data));
+      // strcpy(buffer_data,"FIN");
+      // if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse3,sizeof(adresse3))==-1)
+      // {
+      //   printf("Send failed\n");
+      // }
+      // // Closing file then sockets
+      // printf("Closing file \n");
+      // fclose(fp);
+    }
+    stop++;
+    if (stop==5) {
+      break;
     }
   }
-  for(int i=0;i<max_seq;i++)
-  {
-    free(segments[i]);
-    free(ack);
-  }
+  // for(int i=0;i<max_seq;i++)
+  // {
+  //   free(segments[i]);
+  //   free(ack);
+  // }
 free(c_temp);
 close(server_desc2);
 close(server_data);
