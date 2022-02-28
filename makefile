@@ -1,4 +1,4 @@
 all: server.c
 	gcc -Wall -o server server.c
-remove:
+clear:
 	rm server
