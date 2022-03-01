@@ -12,4 +12,5 @@ Questions à poser
 
 Piste d'amélioration
 
-- Mod
+- Faire du multithreading pour améliorer la gestion de la fenêtre --> un thread pour s'occuper uniquement de la réception des acks et du traitement (extraction numéro segment)
+- Pouvoir ajuster la fenetre client

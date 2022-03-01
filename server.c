@@ -16,7 +16,7 @@
 #define T_SIZE 1024 // Size of buffer transmitted (MTU)
 #define MIN_PORT 1000
 #define MAX_PORT 9999
-
+#define GETSOCKETERRNO() (errno)
 extern int errno;
 
 int main (int argc, char *argv[]) {
@@ -49,7 +49,7 @@ int main (int argc, char *argv[]) {
   float rtt;
   int fsize,max_seq;
   struct timespec start_time, end_time;
-  int *ack = NULL;
+  char *ack = NULL;
   char **segments= NULL;
   struct timeval timeout;
   int file_sent = 0;
@@ -141,7 +141,7 @@ int main (int argc, char *argv[]) {
           memset(buffer_ctrl,'\0',sizeof(buffer_ctrl));
           adresse_data.sin_port = htons(MIN_PORT);
 
-          while (bind(server_data, (struct sockaddr*) &adresse_data, sizeof(adresse_data)) <0 && port <= MAX_PORT)
+          while (bind(server_data, (struct sockaddr*) &adresse_data, sizeof(adresse_data)) <0 && port_data <= MAX_PORT)
           {
             port_data++;
             adresse_data.sin_port = htons(port_data);
@@ -186,6 +186,7 @@ int main (int argc, char *argv[]) {
           printf("RTT: %f sec = %f usec\n", rtt, rtt * 1E9);
           timeout.tv_sec = end_time.tv_sec - start_time.tv_sec;
           timeout.tv_usec = (long int) (0.001*(end_time.tv_nsec - start_time.tv_nsec));
+          timeout.tv_usec = 200*timeout.tv_usec;
 
     }
 
@@ -212,7 +213,7 @@ int main (int argc, char *argv[]) {
       // FD_SET(server_data,&fds);
       // activity = select(server_data+1,&fds,NULL,NULL,NULL);
 
-        // Reading file 
+        // Reading file
         strcpy(filename,buffer_data);
         fp = fopen(filename, "r");
         fseek(fp,0,SEEK_END); // pointing to the end of file
@@ -221,7 +222,7 @@ int main (int argc, char *argv[]) {
         max_seq = fsize/(T_SIZE-6)+1;
         char s_max_seq[6];
         sprintf(s_max_seq,"%i",max_seq);
-        ack = (int*) calloc(max_seq,sizeof(int));
+        ack = (int*) calloc(cwnd,sizeof(int)); // tableau de ack de taille de la fenetre de congestion
         printf("Tableau de ack \n");
         for(int i =0;i<max_seq;i++)
         {
@@ -248,11 +249,13 @@ int main (int argc, char *argv[]) {
 
         for(int i=0;i<max_seq;i++)
         {
-          segments[i]=malloc(T_SIZE*sizeof(char));
+          segments[i]=malloc(T_SIZE*sizeof(char*));
           // printf("fp is located at char : %li \n",ftell(fp));
           sprintf(sq,"%06i",i);
+          printf("%s is \n", sq);
           // printf("Debug\n");
-          strcat(segments[i],sq);
+          strncat(segments[i],sq,6);
+          printf("segment %i is %s\n",i, segments[i]);
           for (int k = 0; k < T_SIZE-6; k++)
           {
             if (feof(fp)) // EOF
@@ -263,41 +266,106 @@ int main (int argc, char *argv[]) {
             strcat(segments[i],c_temp);
             memset(c_temp,'\0',sizeof(c_temp));
           }
-          printf("Segment number %i is :  %s\n\n\n",i,segments[i]);
+          // printf("Segment number %i is :  %s\n\n\n",i,segments[i]);
+
+
+
+
+
+
+        }
+        // Transmission
+        int k =0;
+        int file_sent =0;
+        int end_while_test = 0;
+        while (file_sent==0)
+        {
+          if (end_while_test==2) {
+            break;
+          }
+          for(int i=k;i<(k+cwnd);i++){
+            if (k+cwnd>max_seq) {
+              /* code */
+            }
+            // printf("Transmission\n" );
+            printf("i vaut %i et k vaut %i\n",i,k);
+
+            if (strncmp(segments[i],s_max_seq,1)==0)
+            {
+              printf("Dernier segment atteint, fin de transmission\n" );
+              file_sent==1;
+              break;
+            }
+            if (ack[k]==1)
+            {
+              k++;
+              printf("Décalage de la cwnd\n");
+            } // décalage de fenêtre vers la droite
+
+            if(sendto(server_data, segments[i], T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
+            {
+              printf("Send failed for : %s \n\n",segments[i]);
+            }
+
+            printf("Sent \n");
+            memset(buffer_data,'\0', sizeof(buffer_data));
+            if ((recvfrom(server_data,buffer_data,sizeof buffer_data -1,0,(struct sockaddr*) &adresse_data,&alen3))<0)
+            {
+              printf("Error rcvfrom %d\n",GETSOCKETERRNO());
+              printf("Ack ? : %s\n",buffer_data);
+              if(i==num_seg)
+              {
+                ack[i]=1;
+                // if (i==k) { // Fast retransmit
+                //   k++
+                // }
+              }
+              // sprintf(a,"%i",buffer_data);
+              printf("test : %i \n", num_seg);
+              printf("Tableau de ack \n");
+              for(int i =0;i<max_seq;i++)
+              {
+                printf(" %i ",ack[i]);
+              }
+              printf("\n");
+            } else {
+              printf("Ack ? : %s\n",buffer_data);
+              if (strncmp(buffer_data,segments[i])==0) {
+
+              }
+              if(i==num_seg)
+              {
+                ack[i]=1;
+                // if (i==k) { // Fast retransmit
+                //   k++
+                // }
+              }
+              // sprintf(a,"%i",buffer_data);
+              printf("test : %i \n", num_seg);
+              printf("Tableau de ack \n");
+              for(int i =0;i<max_seq;i++)
+              {
+                printf(" %i ",ack[i]);
+              }
+              printf("\n");
+            }
+
+          }
+          end_while_test++;
+
         }
         printf("Début transmission\n" );
 
-        // Transmission
-        int k =0;
-        for(int i=k;i<k+cwnd+1;i++){
-          printf("Transmission\n" );
 
-          if (strncmp(segments[i],s_max_seq,1)==0)
-            // printf("Transmission\n" );
-            break;
-          printf("Transmission\n" );
-
-
-          if (ack[k]==1) // décalage de fenêtre vers la droite
-            k++;
-          printf("Transmission\n" );
-          // Lance un timer = RTT pour checker si ack du segment est reçu, si timeout, renvoi
-          // clock_gettime(CLOCK_MONOTONIC, &timer_s);
-          // int timeout=
-          if(sendto(server_data, segments[i], T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
-          {
-            printf("Send failed for : %s \n\n",segments[i]);
-          }
-        }
 
         // printf("buffer_data size is %li and it is : %s, sizeof(buffer_data),buffer_data);
-        if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
-        {
-          printf("Send failed\n");
-        }
-        memset(buffer_data,'\0', sizeof(buffer_data));
-        memset(buffer_file,'\0', sizeof(buffer_file));
-        file_sent = 1;
+        // if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
+        // {
+        //   printf("Send failed\n");
+        // }
+        // memset(buffer_data,'\0', sizeof(buffer_data));
+        // memset(buffer_file,'\0', sizeof(buffer_file));
+        // file_sent = 1;
       }
       stop++;
       if (stop==5) {

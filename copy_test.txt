@@ -1,0 +1,9 @@
+tteurs et destinataires TCP peuvent modifier le comportement du flux de données. C'est ce qu'on appelle généralement le contrôle de congestion.
+
+Il existe une multitude d'algorithmes d'évitement de congestion pour TCP.
+Autres
+
+TCP utilise un certain nombre de mécanismes afin d'obtenir une bonne robustesse et des performances élevées. Ces mécanismes comprennent l'utilisation d'une fenêtre glissante, l'algorithme de démarrage lent (slow start), l'algorithme d'évitement de congestion (congestion avoidance), les algorithmes de retransmission rapide (fast retransmit) et de récupération rapide (fast recovery), etc. Des recherches sont menées actuellement afin d'améliorer TCP pour traiter efficacement les pertes, minimiser les erreurs, gérer la congestion et être rapide dans des environnements très haut débit.
+Slow Start (démarrage lent)
+
+Le démarrage lent TCP (Slow start) est un algorithme qui équilibre la vitesse d'une connexion réseau. Le démarrage lent augmente progressivement la q
