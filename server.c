@@ -275,7 +275,7 @@ int main (int argc, char *argv[]) {
         // Transmission
         int k =0; // last ack
         int seg=0;
-        int file_sent =0;
+        file_sent =0;
         int end_while_test = 0;
         while (file_sent==0)
         {
@@ -352,7 +352,7 @@ int main (int argc, char *argv[]) {
 
 
             }
-            end_while_test++;
+            // end_while_test++;
           }
           break;
         }
@@ -373,15 +373,19 @@ int main (int argc, char *argv[]) {
 
 
       // End of transmission
-      // memset(buffer_data,'\0', sizeof(buffer_data));
-      // strcpy(buffer_data,"FIN");
-      // if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
-      // {
-      //   printf("Send failed\n");
-      // }
-      // // Closing file then sockets
-      // printf("Closing file \n");
-      // fclose(fp);
+      if(file_sent==1)
+      {
+        memset(buffer_data,"/0", sizeof(buffer_data));
+        strcpy(buffer_data,"FIN");
+        if(sendto(server_data, buffer_data, T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
+        {
+          printf("Send failed\n");
+        }
+        // Closing file then sockets
+        printf("Closing file \n");
+        fclose(fp);
+      }
+
 
 
     }
