@@ -49,7 +49,7 @@ int main (int argc, char *argv[]) {
   float rtt;
   int fsize,max_seq;
   struct timespec start_time, end_time;
-  char *ack = NULL;
+  char **ack = NULL;
   char **segments= NULL;
   struct timeval timeout;
   int file_sent = 0;
@@ -222,11 +222,13 @@ int main (int argc, char *argv[]) {
         max_seq = fsize/(T_SIZE-6)+1;
         char s_max_seq[6];
         sprintf(s_max_seq,"%i",max_seq);
-        ack = (int*) calloc(cwnd,sizeof(int)); // tableau de ack de taille de la fenetre de congestion
+        ack = malloc(cwnd*sizeof(char*)); // tableau de ack de taille de la fenetre de congestion
         printf("Tableau de ack \n");
-        for(int i =0;i<max_seq;i++)
+        for(int i =0;i<cwnd;i++)
         {
-          printf(" %i ",ack[i]);
+          ack[i] = malloc(6*sizeof(char*));
+          strncpy(ack[i],"X",1);
+          printf("%s\n",ack[i]);
         }
 
         // int seq = 0;
@@ -252,10 +254,10 @@ int main (int argc, char *argv[]) {
           segments[i]=malloc(T_SIZE*sizeof(char*));
           // printf("fp is located at char : %li \n",ftell(fp));
           sprintf(sq,"%06i",i);
-          printf("%s is \n", sq);
+          // printf("%s is \n", sq);
           // printf("Debug\n");
           strncat(segments[i],sq,6);
-          printf("segment %i is %s\n",i, segments[i]);
+          // printf("segment %i is %s\n",i, segments[i]);
           for (int k = 0; k < T_SIZE-6; k++)
           {
             if (feof(fp)) // EOF
@@ -267,95 +269,100 @@ int main (int argc, char *argv[]) {
             memset(c_temp,'\0',sizeof(c_temp));
           }
           // printf("Segment number %i is :  %s\n\n\n",i,segments[i]);
-
+          // printf("Reading file done\n", );
 
 
 
 
 
         }
+
+        printf("Début transmission\n" );
+
         // Transmission
-        int k =0;
+        int k =0; // last ack
+        int seg=0;
         int file_sent =0;
         int end_while_test = 0;
         while (file_sent==0)
         {
-          if (end_while_test==2) {
-            break;
-          }
-          for(int i=k;i<(k+cwnd);i++){
-            if (k+cwnd>max_seq) {
-              /* code */
-            }
-            // printf("Transmission\n" );
-            printf("i vaut %i et k vaut %i\n",i,k);
 
-            if (strncmp(segments[i],s_max_seq,1)==0)
-            {
-              printf("Dernier segment atteint, fin de transmission\n" );
-              file_sent==1;
+          printf("k is %i\nMax seq is %i\n",k,max_seq);
+          while (k!=max_seq-cwnd) {
+            /* code */
+            if (end_while_test==3) {
               break;
             }
-            if (ack[k]==1)
+            printf("Begin while\n");
+            for(int i=0;i<+cwnd;i++)
             {
-              k++;
-              printf("Décalage de la cwnd\n");
-            } // décalage de fenêtre vers la droite
+              printf("Check si décalage\n");
+              // Si première case du tableau ackée --> décalage du tableau
+              while(strncmp(ack[0],"X",1)!=0)
+              {
+                k++;
+                printf("OUI\n" );
+                for(int i =0;i<cwnd;i++)
+                {
+                  if (i==cwnd-1) {
+                    break;
+                  }
+                  strncpy(ack[i],ack[i+1],6);
+                  printf("%s\n",ack[i]);
+                }
+                // reset dernière case de la fênetre
+                strncpy(ack[cwnd-1],"X",1);
+                printf("%s\n",ack[cwnd-1]);
+                // k++;
+              }
 
-            if(sendto(server_data, segments[i], T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
-            {
-              printf("Send failed for : %s \n\n",segments[i]);
+              // Si case du buffer non validée --> transmission
+              // printf("ack [i] : ");
+              if (strncmp(ack[i],"X",1)==0)
+              {
+                // printf("Transmission\n" );
+                printf("i vaut %i et k vaut %i\n",i,k);
+                if(sendto(server_data, segments[k+i], T_SIZE, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
+                {
+                  printf("Send failed for : %s \n\n",segments[i]);
+                }
+                printf("Sent segment : %i \n", k+i);
+                memset(buffer_data,'\0', sizeof(buffer_data));
+                if ((recvfrom(server_data,buffer_data,sizeof buffer_data -1,0,(struct sockaddr*) &adresse_data,&alen3))<0)
+                {
+                  printf("Error rcvfrom %d\n",GETSOCKETERRNO());
+                } else {
+                  // Traitement du ack reçu
+                  printf("Ack ? : %s\n",buffer_data);
+                  char *temp = strtok(buffer_data,"ACK");
+                  // printf("TEMP IS %s\n", temp);
+                  // printf("segment %i is %s\n",i,segments[i] );
+                  if (strncmp(temp,segments[k+i],6)==0) {
+                    printf("ça passe\n");
+                    strncpy(ack[i],temp,6);
+                    printf("ça passe\n");
+                  }
+                  // Comparaison entre numéro ACK reçu et séquence actuelle
+
+
+                  printf("\n");
+                  printf("Tableau de ack \n");
+                  for(int i =0;i<cwnd;i++){
+                    printf("%s\n",ack[i]);
+                  }
+
+
+
+
+                }              }
+
+
+
             }
-
-            printf("Sent \n");
-            memset(buffer_data,'\0', sizeof(buffer_data));
-            if ((recvfrom(server_data,buffer_data,sizeof buffer_data -1,0,(struct sockaddr*) &adresse_data,&alen3))<0)
-            {
-              printf("Error rcvfrom %d\n",GETSOCKETERRNO());
-              printf("Ack ? : %s\n",buffer_data);
-              if(i==num_seg)
-              {
-                ack[i]=1;
-                // if (i==k) { // Fast retransmit
-                //   k++
-                // }
-              }
-              // sprintf(a,"%i",buffer_data);
-              printf("test : %i \n", num_seg);
-              printf("Tableau de ack \n");
-              for(int i =0;i<max_seq;i++)
-              {
-                printf(" %i ",ack[i]);
-              }
-              printf("\n");
-            } else {
-              printf("Ack ? : %s\n",buffer_data);
-              if (strncmp(buffer_data,segments[i])==0) {
-
-              }
-              if(i==num_seg)
-              {
-                ack[i]=1;
-                // if (i==k) { // Fast retransmit
-                //   k++
-                // }
-              }
-              // sprintf(a,"%i",buffer_data);
-              printf("test : %i \n", num_seg);
-              printf("Tableau de ack \n");
-              for(int i =0;i<max_seq;i++)
-              {
-                printf(" %i ",ack[i]);
-              }
-              printf("\n");
-            }
-
+            end_while_test++;
           }
-          end_while_test++;
-
+          break;
         }
-        printf("Début transmission\n" );
-
 
 
         // printf("buffer_data size is %li and it is : %s, sizeof(buffer_data),buffer_data);
@@ -367,9 +374,8 @@ int main (int argc, char *argv[]) {
         // memset(buffer_file,'\0', sizeof(buffer_file));
         // file_sent = 1;
       }
-      stop++;
-      if (stop==5) {
-        break;
+
+
         // printf("n value : %i\n", n);
 
 
@@ -383,7 +389,7 @@ int main (int argc, char *argv[]) {
       // // Closing file then sockets
       // printf("Closing file \n");
       // fclose(fp);
-    }
+
 
     }
 
