@@ -230,13 +230,7 @@ int main (int argc, char *argv[]) {
           strncpy(ack[i],"X",1);
           printf("%s\n",ack[i]);
         }
-
-        // int seq = 0;
         char sq[12];
-        // sprintf(sq,"%i",seq);
-        // strcpy(sq,);
-        // printf("sizeof qs : %li\n",sizeof(sq));
-        // printf("fsize is : %i\n",fsize);
         printf("File divided in %i sequences\n", max_seq);
         if(fp==NULL)
         {
@@ -247,8 +241,7 @@ int main (int argc, char *argv[]) {
         memset(buffer_data,'\0', sizeof(buffer_data));
 
         // Extraction from file to 2D list of char[T_SIZE] with a length of max_seq
-         segments= malloc(max_seq*sizeof(char*));
-
+        segments= malloc(max_seq*sizeof(char*));
         for(int i=0;i<max_seq;i++)
         {
           segments[i]=malloc(T_SIZE*sizeof(char*));
