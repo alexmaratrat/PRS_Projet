@@ -18,7 +18,9 @@ Slow Start (démarrage lent)
 
 Le démarrage lent TCP (Slow start) est un algorithme qui équilibre la vitesse d'une connexion réseau. Le démarrage lent augmente progressivement la quantité de données transmises jusqu'à ce qu'il trouve la capacité de transport maximale du réseau.
 
-Le démarrage lent du TCP est l'une des premières étapes du processus de contrôle de la congestion. Il permet d'équilibrer la quantité de données qu'un émetteur peut transmettre (appelée fenêtre de congestion) et la quantité de données que le récepteur peut accepter (appelée fenêtre de réception). La plus faible des deux valeurs devient la quantité maximale de données que l'expéditeur est autorisé à transmettre avant de recevoir un accusé de réception du récepteur. 
+Le démarrage lent du TCP est l'une des premières étapes du processus de contrôle de la congestion. Il permet d'équilibrer la quantité de données qu'un émetteur peut transmettre (appelée fenêtre de congestion) et la quantité de données que le récepteur peut accepter (appelée fenêtre de réception). La plus faible des deux valeurs devient la quantité maximale de données que l'expéditeur est autorisé à transmettre avant de recevoir un accusé de réception du récepteur.FEFZ
+dedede
 
+dededede
 
-Fin test
+caca test
