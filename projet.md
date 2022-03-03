@@ -1,9 +1,8 @@
 # Etat du projet
 
 Programme :
-* Première estimation de RTT
-* Socket de contrôle : reçoit premier ACK000000 mais rien après : done
-* Erreur de segmentation lors de l'accès aux cases mémoire des segments
+- Taille fichier >>
+- Timer
 
 
 Questions à poser
@@ -12,11 +11,11 @@ Questions à poser
 
 Piste d'amélioration
 
-- Faire du multithreading pour améliorer la gestion de la fenêtre --> un thread pour s'occuper uniquement de la réception des acks et du traitement (extraction numéro segment)
+- Faire du multithreading pour améliorer la gestion de la fenêtre --> un thread pour s'occuper uniquement de la réception des acks et du traitement (extraction numéro segment) pour optimiser
 - Pouvoir ajuster la fenetre client
 
 
 Note à soi même en C pour plus tard
 - Pourquoi strncpy(string, "X",1) marche et strncpy(string, 'X',1) non ??? '' = un char et pas considéré comme un string? Bref ça m'a rendu fou.
-Réglé --> On attend un *char et en écrivant "" on initialise directement une chaîne de caractère, dont le point d'entrée est un pointeur vers la chaîne, alors qu'en mettant '' --> on donne direct un char, et non un pointeur vers une chaîne de caractère.
+Réglé --> On attend un *char et en écrivant "" on initialise directement une chaîne de caractère, dont le point d'entrée est un pointeur vers la chaîne, alors qu'en mettant '' --> on donne direct un char, et non un pointeur vers une chaîne de caractère. Pas d'erreur lors de la compilation, on voit
 - memset('\0') ou memset(0) revient en même car dans table ASCII, code ASCII pour int = 0 équivalent à chaîne '\0' (déterminant la fin du string)
