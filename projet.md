@@ -4,6 +4,45 @@ Programme :
 - Taille fichier >>
 - Timer
 
+k : Numéro du premier segment non acquitté en contigu (la valeur du ACK ou non ACK dans le tableau ack est à l'indice **0**)
+
+cwnd : taille de la fenêtre (=5)
+
+Init
+[-4 -4 -4 -4 -4]
+
+k=1
+Transmission
+[-1 -1 -1 -1 -1]
+segments 1,2,3,4 et 5
+
+Réception ACKs
+Je reçois ACK1
+[0 -1 -1 -1 -1]
+Je reçois ACK3
+[0 0 0 -1 -1]
+Je reçois ACK3 (x3)
+[0 0 0 -4 -1]
+
+Management cwnd
+[-4 -1 -4 -4 -4]
+
+k =4 , déclage de 3 (k-1)
+
+Transmission
+[-1 -1 -1 -1 -1]
+segments 4,5,6,7 et 8
+
+Réception ACKs
+Je reçois ACK7
+[0 0 0 0 -1]
+Je reçois ACK7x4
+[0 0 0 0 -4]
+
+Management cwnd
+[-4 -4 -4 -4 -4]
+k=8
+
 
 Questions à poser
 > Faut il réestimer le RTT au cours du programme ? Si oui, à quelle fréquence? Pas besoin
@@ -12,7 +51,8 @@ Questions à poser
 Piste d'amélioration
 
 - Faire du multithreading pour améliorer la gestion de la fenêtre --> un thread pour s'occuper uniquement de la réception des acks et du traitement (extraction numéro segment) pour optimiser
-- Pouvoir ajuster la fenetre client
+- Pouvoir ajuster la fenêtre client
+( tileout)
 
 
 Note à soi même en C pour plus tard

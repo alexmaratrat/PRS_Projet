@@ -55,6 +55,9 @@ int main (int argc, char *argv[]) {
   int file_sent = 0;
   int cwnd;
   int stop = 0;
+  int indice =0;
+  int last_ack_indice =-1;
+  int last_ack=-1;
 
   // Variables : reading file
 
@@ -187,7 +190,7 @@ int main (int argc, char *argv[]) {
           printf("RTT: %f sec = %f usec\n", rtt, rtt * 1E9);
           timeout.tv_sec = rtt_stop.tv_sec - rtt_start.tv_sec;
           timeout.tv_usec = (long int) (0.001*(rtt_stop.tv_nsec - rtt_start.tv_nsec));
-          timeout.tv_usec = 100*timeout.tv_usec;
+          timeout.tv_usec = 350*timeout.tv_usec;
 
     }
 
@@ -224,12 +227,12 @@ int main (int argc, char *argv[]) {
         fseek(fp,0,SEEK_SET);
         inter = (double)fsize/(T_SIZE-6);
         nb_seq = (int) ceil(inter);;
-        cwnd =10;
+        cwnd =15;
         ack = malloc(cwnd*sizeof(long*)); // tableau de ack de taille de la fenetre de congestion
         printf("Tableau de ack \n");
         for(int i =0;i<cwnd;i++)
         {
-          ack[i] = -1;
+          ack[i] = -5;
           // strncpy(ack[i],"X",1);
           printf("%li\n",ack[i]);
         }
@@ -330,7 +333,7 @@ int main (int argc, char *argv[]) {
 
           while (k!=nb_seq+1)
           {
-            // if (end_while_test==6) {
+            // if (end_while_test==3) {
             //   break;
             // }
             // Transmission
@@ -343,14 +346,20 @@ int main (int argc, char *argv[]) {
 
               // Si case du buffer non validée --> transmission
               // printf("ack [i] : ");
-              if (ack[i]==-1)
+              if (ack[i]<=-4)
               {
                 if ((i+k)>=nb_seq) {
                   printf("Last segment reached\n");
+                  if(sendto(server_data, segments[nb_seq], rest_bytes, 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
+                  {
+                    printf("Send failed for : %s \n\n",segments[nb_seq]);
+                  }
+                  printf("Last segment sent\n");
                   break;
                 }
                 else
                 {
+                  ack[i]=-1;
                   // printf("Transmission\n" );
                   printf("i vaut %i et k vaut %i\n",i,k);
                   // printf("Segment number %i is sent and it is :  %s\n\n\n",(k+i+1),segments[k+i+1]);
@@ -372,19 +381,21 @@ int main (int argc, char *argv[]) {
             }
             printf("\n");
             // Réception et MAJ des ACKS
+            last_ack_indice=-1;
             printf("Réception et MAJ des ACKS\n");
             for(int i=0;i<cwnd;i++)
             {
-              if ((i+k)>=nb_seq) {
-                printf("Last segment reached\n");
-                if(sendto(server_data, segments[nb_seq], (rest_bytes+6), 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
-                {
-                  printf("Send failed for : %s \n\n",segments[i+k]);
-                }
-                // printf("Segment number %i is sent and it is : %s\n",(k+i), segments[i+k]);
-                printf("Segment number %i is sent\n",(k+i));
-                memset(buffer_data,'\0', sizeof(buffer_data));
-                k=nb_seq+1;
+              if (k==nb_seq+1) {
+
+                // printf("Last segment reached\n");
+                // if(sendto(server_data, segments[nb_seq], (rest_bytes+6), 0,(struct sockaddr*) &adresse_data,sizeof(adresse_data))==-1)
+                // {
+                //   printf("Send failed for : %s \n\n",segments[i+k]);
+                // }
+                // // printf("Segment number %i is sent and it is : %s\n",(k+i), segments[i+k]);
+                // printf("Segment number %i is sent\n",(k+i));
+                // memset(buffer_data,'\0', sizeof(buffer_data));
+                file_sent=1;
                 break;
               }
               else
@@ -392,78 +403,80 @@ int main (int argc, char *argv[]) {
                 if ((recvfrom(server_data,buffer_data,9,0,(struct sockaddr*) &adresse_data,&alen3))<0)
                 {
                   printf("Error rcvfrom %d\n",GETSOCKETERRNO());
+                  if (last_ack_indice==-1 ) {
+                    ack[0]--;
+                  }
+                  if (last_ack_indice>=0 && last_ack_indice<(cwnd-1)) {
+                    ack[last_ack_indice+1]--;
+                  }
+
                 } else {
-                  // Parsing et Comparaison ACK et segment
-                  // printf("Ack ? : %s\n",buffer_data);
+                  printf("ACK received\n");
                   char *temp = strtok(buffer_data,"ACK");
-                  // printf("TEMP IS %s\n", temp);
-                  // printf("segment %i is %s\n",i,segments[i] );
-                  // if (strncmp(temp,segments[k+i],6)==0) {
-                  //   // printf("ça passe\n");
-                  //   strncpy(ack[i],temp,6);
-                  //   // printf("ça passe\n");
-                  // }
-                  // int num_ack = 100000*((int)(buffer_data[3]))+10000*(int)(buffer_data[4])+1000*((int)(buffer_data[5]))+100*((int)(buffer_data[6]))+10*((int)(buffer_data[7]))+((int)(buffer_data[8]));
-                  // printf("temp is : %s\n",temp);
                   printf("Tableau de ack avant changement:   ");
                   for(int i =0;i<cwnd;i++){
                     printf(" %li ",ack[i]);
                     // printf("i : %i\n",i);
                   }
+                  printf("\n" );
                   long num_ack = strtol(temp,NULL,10);
-                  printf("\nnum_ack vaut %li\n",num_ack);
-                  printf("i vaut %i et k vaut %i\n",i,k);
-                  // Comparaison entre numéro ACK reçu et segment actuel
-                  int dif = num_ack-(k+i);
-
-                  if (dif>0) {
-                    for(int z =0;z<dif;z++)
-                    {
-                      ack[i+z]=1;
+                  if (num_ack>=last_ack) {
+                    last_ack=num_ack;
+                    // printf("\nnum_ack vaut %li\n",num_ack);
+                    printf("i vaut %i et k vaut %i\n",i,k);
+                    printf("Je compare l'ack reçu (num_ack) qui est %li au segment %i\n",num_ack,i+k);
+                    // Equivalent numéro segment dans la fenêtre
+                    indice = (num_ack)-k;
+                    if (indice>last_ack_indice) {
+                      last_ack_indice=indice;
                     }
+                    printf("Last last_ack_indice is %i \n",last_ack_indice);
+                    // Comparaison entre numéro ACK reçu et segment actuel
+                    if (ack[indice]!=0) {
+                      ack[indice]=0;
+                      for(int i=0;i<indice;i++){
+                        ack[i]=0;
+                      }
+                    }
+                    else{
+                      ack[indice+1]--;
+                    }
+                    printf("Tableau de ack après changement:   ");
+                    for(int i =0;i<cwnd;i++){
+                      printf(" %li ",ack[i]);
+                      // printf("i : %i\n",i);
+                    }
+                    printf("\n\n");
+                    memset(buffer_data,0,9);
                   }
-                  else
-                  {
-                    ack[i+dif]=num_ack;
-                  }
-
-                  printf("Tableau de ack après changement:   ");
-                  for(int i =0;i<cwnd;i++){
-                    printf(" %li ",ack[i]);
-                    // printf("i : %i\n",i);
-                  }
-                  printf("\n\n");
-                  memset(buffer_data,0,9);
                 }
+                // Décalage fenêtre pour les i acks contigus
+
+
               }
 
 
 
 
             }
-            // Décalage fenêtre pour les i acks contigus
-            while(ack[0]!=-1)
-            {
-              k++;
-              printf("Fenêtre décalée\n" );
-              for(int i =0;i<cwnd;i++)
-              {
-                if (i==cwnd-1) {
-                  break;
-                }
-                ack[i]=ack[i+1];
-                // strncpy(ack[i],ack[i+1],6);
-                // printf("%s\n",ack[i]);
+            printf("Tableau de ack avant décalage éventuel:   ");
+            for(int i =0;i<cwnd;i++){
+              printf(" %li ",ack[i]);
+              // printf("i : %i\n",i);
+            }
+            if (last_ack_indice!=-1 && file_sent==0) {
+              for(int i = last_ack_indice;i<cwnd;i++){
+                ack[i-last_ack_indice]=ack[i];
+                ack[i]=-4;
               }
-              // reset dernière case de la fênetre
-              ack[cwnd-1]=-1;
-              // strncpy(ack[cwnd-1],"X",1);
-              // printf("%s\n",ack[cwnd-1]);
-              // k++;
+              k+=last_ack_indice+1;
+            }
+            printf("k vaut %i Tableau de ack après décalage éventuel:   ",k);
+            for(int i =0;i<cwnd;i++){
+              printf(" %li ",ack[i]);
+              // printf("i : %i\n",i);
             }
             printf("\n\n");
-
-
             end_while_test++;
           }
           clock_gettime(CLOCK_MONOTONIC, &timer_stop);
